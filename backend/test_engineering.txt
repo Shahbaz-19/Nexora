@@ -1,0 +1,9 @@
+﻿Cooling System Troubleshooting
+
+The engine cooling system maintains safe operating temperatures during normal operation.
+
+If coolant pressure drops below the recommended range, engineers should inspect the coolant reservoir, hoses, pump, and connections for leaks.
+
+The equipment must not be restarted until the cause of the pressure loss has been identified and corrected.
+
+A damaged coolant pump can reduce circulation and cause the engine temperature to rise.

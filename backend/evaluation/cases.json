@@ -1,0 +1,31 @@
+[
+  {
+    "id": "coolant-pressure-range",
+    "question": "What is the normal coolant pressure range?",
+    "expected_facts": ["2.2", "2.8 bar"],
+    "expected_document": "asterion-gx-400.pdf",
+    "answerable": true
+  },
+  {
+    "id": "coolant-inspection",
+    "question": "What should I inspect first if coolant pressure drops?",
+    "expected_facts": ["reservoir", "hoses", "clamps"],
+    "expected_document": "asterion-gx-400.pdf",
+    "answerable": true
+  },
+  {
+    "id": "unanswerable",
+    "question": "What color was the engineer's first car?",
+    "expected_facts": [],
+    "expected_document": null,
+    "answerable": false
+  },
+  {
+    "id": "follow-up",
+    "question": "Why does that matter?",
+    "history_case": "coolant-pressure-range",
+    "expected_facts": [],
+    "expected_document": "asterion-gx-400.pdf",
+    "answerable": true
+  }
+]

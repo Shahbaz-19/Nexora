@@ -1,0 +1,66 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-engineering_hub}
+      POSTGRES_USER: ${POSTGRES_USER:-engineering_hub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    mem_limit: 1g
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements.txt
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-engineering_hub}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-engineering_hub}
+      HF_HOME: /models/huggingface
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-nomic_local}
+      RERANKER_PROVIDER: ${RERANKER_PROVIDER:-local}
+    volumes:
+      - huggingface_cache:/models/huggingface
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    stop_grace_period: 30s
+    restart: unless-stopped
+    mem_limit: 4g
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports: ["3000:3000"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 512m
+
+volumes:
+  postgres_data:
+  huggingface_cache:
