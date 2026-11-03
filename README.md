@@ -1,94 +1,341 @@
 # Nexora
 
-**Intelligence, connected.**
+### Intelligence, connected.
 
-Nexora is an AI-Powered Knowledge Intelligence Platform built with FastAPI, Next.js, PostgreSQL/pgvector, configurable Gemini or local Nomic embeddings, PostgreSQL full-text search, RRF, an optional local cross-encoder reranker, and Groq structured generation.
+**Nexora is an AI-Powered Knowledge Intelligence Platform** built with FastAPI, Next.js, PostgreSQL/pgvector, Gemini and local Nomic embeddings, hybrid retrieval, and Groq structured generation.
+
+Upload your documents, build a personal knowledge base, and interact with your information through conversational AI.
+
+**Live Demo:** https://nexora-azure-two.vercel.app/
+
+**Backend API:** https://nexora-h21g.onrender.com
+
+---
 
 ## Features
 
-- Secure email/password authentication with short-lived JWT access tokens, rotating refresh sessions, and HttpOnly cookies.
-- Per-user document ingestion for PDF, TXT, and Markdown files with asynchronous parsing, chunking, and embedding.
-- Hybrid retrieval through pgvector semantic search, PostgreSQL full-text search, Reciprocal Rank Fusion, and optional local reranking.
-- Persistent, conversation-aware chat with follow-up rewriting and bounded history.
-- Backend-validated structured provenance, trusted source cards, and clearly separated supplemental guidance.
-- Knowledge Base management for upload status, document metadata, and deletion.
-- Responsive Next.js interface with validated progressive SSE delivery.
+- **Secure authentication:** Email/password authentication, short-lived JWT access tokens, rotating refresh sessions, and HttpOnly cookies.
+- **Document ingestion:** Per-user PDF, TXT, and Markdown uploads with asynchronous parsing, chunking, and embedding.
+- **Hybrid retrieval:** pgvector semantic search combined with PostgreSQL full-text search.
+- **Reciprocal Rank Fusion:** Combines semantic and lexical search results.
+- **Optional reranking:** Local cross-encoder reranking.
+- **Conversational RAG:** Persistent conversations, follow-up question rewriting, and bounded chat history.
+- **Source-grounded answers:** Backend-validated structured provenance, trusted source cards, and separated supplemental guidance.
+- **Knowledge Base:** Document status, metadata management, and deletion.
+- **Progressive delivery:** Validated SSE responses through a responsive Next.js interface.
 
-## Repository layout
+---
+
+## Screenshots
+
+### Knowledge Base
+
+![Nexora Knowledge Base](screenshots/knowledge-base.png)
+
+### AI Chat with Source Citations
+
+![Nexora Chat with Citations](screenshots/chat-with-citations.png)
+
+### Welcome Screen
+
+![Nexora Welcome Screen](screenshots/welcome.png)
+
+### Authentication
+
+| Sign In | Create Account |
+|---|---|
+| ![Sign In](screenshots/sign-in.png) | ![Create Account](screenshots/create-account.png) |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Next.js Frontend] --> B[FastAPI Backend]
+
+    B --> C[Authentication]
+    B --> D[Document Ingestion]
+    B --> E[Chat and Retrieval]
+
+    D --> F[Parsing and Chunking]
+    F --> G[Embedding Provider]
+    G --> H[(PostgreSQL + pgvector)]
+
+    E --> I[Semantic Search]
+    E --> J[Full-Text Search]
+
+    I --> K[RRF Fusion]
+    J --> K
+
+    K --> L[Optional Cross-Encoder]
+    L --> M[Groq Generation]
+    M --> N[Provenance Validation]
+    N --> O[Persistent Response]
+    O --> P[SSE Delivery]
+    P --> A
+```
+
+### RAG Pipeline
+
+1. **Upload:** An authenticated user uploads a supported document.
+2. **Processing:** The API accepts the upload with HTTP `202` and schedules background processing.
+3. **Chunking:** Documents are parsed and divided into smaller chunks.
+4. **Embedding:** Chunks are converted into vectors using the configured embedding provider.
+5. **Retrieval:** Semantic and lexical search retrieve relevant chunks.
+6. **Fusion:** Reciprocal Rank Fusion combines retrieval candidates.
+7. **Reranking:** An optional local cross-encoder reranks the candidates.
+8. **Generation:** Retrieved context is sent to Groq for structured answer generation.
+9. **Validation:** The backend validates provenance before persisting and returning the response.
+10. **Delivery:** The validated Markdown is progressively delivered through Server-Sent Events.
+
+**Streaming behavior:** Generation and provenance validation finish before SSE delivery begins. This provides progressive answer display, not time-to-first-token generation streaming.
+
+---
+
+## Repository Structure
 
 | Path | Purpose |
-| --- | --- |
+|---|---|
 | `backend/app` | FastAPI routes, authentication, ingestion, retrieval, generation, and persistence |
 | `backend/alembic` | PostgreSQL and pgvector schema migrations |
 | `backend/evaluation` | Versioned deterministic RAG evaluation cases |
 | `backend/test_*.py` | Backend unit and integration tests |
 | `frontend/src` | Next.js App Router application and shared UI components |
-| `frontend/tests` | Browser-level Playwright tests |
-| `docker-compose.yml` | Local full-stack environment with pgvector PostgreSQL |
+| `frontend/tests` | Playwright browser tests |
+| `docker-compose.yml` | Local full-stack environment |
 | `render.yaml` | Render backend service configuration |
+| `screenshots/` | Project interface screenshots |
 
-## Architecture
+---
 
-Uploads are validated and accepted with `202`, then parsed, chunked, embedded, and indexed by an in-process FastAPI background task. Retrieval is scoped to the authenticated user, READY documents, and the active embedding provider/model identity. Semantic and lexical candidates are fused with RRF, optionally reranked locally, and sent to Groq. The backend validates structured provenance before persisting and returning answers.
+## Technology Stack
 
-`POST /chat/query/stream` uses SSE. Generation and provenance validation finish before delivery begins; the validated Markdown is then emitted progressively and the final event contains trusted source metadata. This adds perceived streaming while preventing unvalidated model output from reaching clients.
+| Layer | Technologies |
+|---|---|
+| Frontend | Next.js, React, TypeScript, Tailwind CSS |
+| Backend | Python, FastAPI |
+| Database | PostgreSQL, pgvector |
+| ORM | SQLAlchemy |
+| Migrations | Alembic |
+| Authentication | JWT, Argon2 password hashing, refresh sessions |
+| Embeddings | Gemini, Nomic |
+| Retrieval | Vector Search, PostgreSQL Full-Text Search, RRF |
+| Reranking | Sentence Transformers, Cross-Encoder |
+| LLM | Groq |
+| Streaming | Server-Sent Events |
+| Deployment | Vercel, Render, Neon PostgreSQL |
+| Testing | unittest, Playwright |
 
-## Local setup
+---
 
-1. Create `backend/.env` from `.env.example`, changing the database host to `localhost` when PostgreSQL runs outside Docker.
-2. Create and activate a Python 3.11 virtual environment in `backend`.
-3. Install dependencies: `pip install -r requirements.txt`.
-4. Apply migrations: `alembic upgrade head`.
-5. Start the API: `uvicorn app.main:app --reload`.
-6. In `frontend`, run `npm ci` and `npm run dev`.
+## Local Setup
 
-The frontend is available at `http://localhost:3000` and the API at `http://localhost:8000`. API documentation is available at `http://localhost:8000/docs` in development.
+### Prerequisites
 
-`.env.example` selects `nomic_local` plus the local reranker for local development. To use hosted embeddings locally, set `EMBEDDING_PROVIDER=gemini`, provide `GEMINI_API_KEY`, and set `RERANKER_PROVIDER=none`.
+- Python 3.13.3 (local development environment)
+- Node.js and npm
+- PostgreSQL with pgvector, or Docker Desktop
+
+### 1. Backend Setup
+
+Open a terminal in the `backend` directory.
+
+Create a virtual environment:
+
+```powershell
+python -m venv venv
+```
+
+Activate it:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+Install local dependencies:
+
+```powershell
+pip install -r requirements.txt
+```
+
+Create `backend/.env` using `.env.example` and configure your database and API credentials.
+
+Apply database migrations:
+
+```powershell
+alembic upgrade head
+```
+
+Start the backend:
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+### 2. Frontend Setup
+
+Open another terminal:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+The application will be available at:
+
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+- API documentation: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
+
+### Embedding Configuration
+
+The local `.env.example` selects:
+
+- `EMBEDDING_PROVIDER=nomic_local`
+- `RERANKER_PROVIDER=local`
+
+To use hosted Gemini embeddings locally:
+
+```env
+EMBEDDING_PROVIDER=gemini
+RERANKER_PROVIDER=none
+```
+
+Provide `GEMINI_API_KEY` when using Gemini.
+
+---
 
 ## Docker
 
-Copy `.env.example` to `.env`, replace every placeholder secret, then run:
+Copy `.env.example` to `.env` and replace placeholder secrets.
+
+Build and start the application:
 
 ```powershell
 docker compose build
 docker compose up -d
+```
+
+Check running services:
+
+```powershell
 docker compose ps
+```
+
+View backend logs:
+
+```powershell
 docker compose logs -f backend
 ```
 
-The backend applies Alembic migrations before starting. Local Compose explicitly builds `requirements.txt`, which includes the local ML dependencies, and persists the Hugging Face cache. The cloud Dockerfile default installs `requirements-cloud.txt` without PyTorch or sentence-transformers.
+Stop the stack:
 
-Stop the stack with `docker compose down`. Add `-v` only when you intentionally want to delete database and model-cache volumes.
+```powershell
+docker compose down
+```
+
+Use `docker compose down -v` only when you intentionally want to delete database and model-cache volumes.
+
+The Docker bootstrap enables the PostgreSQL vector extension and applies Alembic migrations before starting Uvicorn.
+
+The Dockerfile defaults to `requirements-cloud.txt`, which excludes PyTorch and sentence-transformers. The local Compose configuration uses the local dependency setup.
+
+---
 
 ## Configuration
 
-Required: `DATABASE_URL`, `JWT_SECRET_KEY`, `GROQ_API_KEY`, `GROQ_MODEL`, and `POSTGRES_PASSWORD` for Compose. `GEMINI_API_KEY` is required only for `EMBEDDING_PROVIDER=gemini`. Embedding settings include `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_REQUEST_TIMEOUT_SECONDS`, and `EMBEDDING_BATCH_SIZE`. `RERANKER_PROVIDER` accepts `none` or `local`. `NEXT_PUBLIC_API_URL` is compiled into the frontend image.
+### Backend Environment Variables
 
-Production HTTPS deployments should use `COOKIE_SECURE=true`. Cross-site frontend/API deployments also require `COOKIE_SAMESITE=none`; same-site deployments should retain `lax`. CORS origins must be explicit.
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection URL |
+| `JWT_SECRET_KEY` | JWT signing secret |
+| `GROQ_API_KEY` | Groq API key |
+| `GROQ_MODEL` | Groq generation model |
+| `POSTGRES_PASSWORD` | PostgreSQL password for Compose |
+| `GEMINI_API_KEY` | Required for Gemini embeddings |
+| `GEMINI_EMBEDDING_MODEL` | Gemini embedding model |
+| `EMBEDDING_REQUEST_TIMEOUT_SECONDS` | Embedding request timeout |
+| `EMBEDDING_BATCH_SIZE` | Embedding batch size |
+| `RERANKER_PROVIDER` | `none` or `local` |
+| `CORS_ORIGINS` | Allowed frontend origins |
 
-## Vercel + Render + Neon deployment
+### Frontend Environment Variables
 
-### Measured model constraint
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend API base URL |
 
-Run `python scripts/profile_model_memory.py` from `backend` to reproduce the model memory profile. On the current Windows development machine, one fresh Python process measured:
+`NEXT_PUBLIC_API_URL` is compiled into the frontend build, so redeploy the frontend after changing it.
 
-| Stage | Resident memory |
-| --- | ---: |
+Never commit API keys, database credentials, or JWT secrets.
+
+---
+
+## Deployment: Vercel + Render + Neon
+
+Nexora uses three deployment platforms:
+
+| Component | Platform |
+|---|---|
+| Frontend | Vercel |
+| Backend | Render |
+| Database | Neon PostgreSQL |
+
+### 1. Model Memory Constraints
+
+The local embedding and reranking models have significant memory requirements.
+
+Measured on the development machine:
+
+| Stage | Resident Memory |
+|---|---:|
 | Process baseline | 15 MiB |
 | ML imports | 380 MiB |
 | Nomic loaded and warmed | 922 MiB |
 | Nomic + cross-encoder loaded and warmed | 1,022 MiB |
 
-These measurements rule out the local model stack on Render Free. Cloud configuration instead uses `gemini-embedding-001` at 768 dimensions and disables the cross-encoder, retaining RRF ranking. The cloud app does not import or warm PyTorch. Gemini free-tier availability and limits depend on the Google project and are not guaranteed; check the active quota in Google AI Studio before deployment.
+These measurements make the local model stack unsuitable for the Render Free memory limit.
 
-Gemini uses `RETRIEVAL_DOCUMENT` for chunks and `RETRIEVAL_QUERY` for queries. The backend requests 768 dimensions, manually L2-normalizes the result as required for reduced `gemini-embedding-001` vectors, and rejects wrong-length, zero, NaN, or infinite vectors. The official SDK handles configured timeouts and bounded retry/backoff for 408, 429, and transient 5xx responses.
+The cloud configuration therefore uses:
 
-### Embedding-space migration
+- Gemini `gemini-embedding-001`
+- 768-dimensional embeddings
+- RRF retrieval
+- `RERANKER_PROVIDER=none`
 
-Nomic and Gemini vectors are incompatible despite both having 768 values. Migration `f2c31a8bd420` records `embedding_provider` and `embedding_model` on every document and marks pre-existing vectors as Nomic. Both semantic and lexical retrieval require an exact match with the active identity, so legacy documents cannot leak into Gemini retrieval.
+The cloud application avoids loading PyTorch and local reranking weights.
 
-After changing the environment to Gemini and applying migrations, re-index existing READY documents explicitly from `backend`:
+### 2. Gemini Embedding Configuration
+
+Gemini uses:
+
+- `RETRIEVAL_DOCUMENT` for document chunks.
+- `RETRIEVAL_QUERY` for user queries.
+- 768-dimensional vectors.
+- L2 normalization.
+- Vector validation for incorrect dimensions, zero values, NaN, and infinity.
+- Configured request timeouts and bounded retry/backoff for transient errors.
+
+Gemini free-tier availability and quotas depend on the Google project and may change.
+
+### 3. Embedding-Space Migration
+
+Nomic and Gemini embeddings are incompatible even though both use 768 dimensions.
+
+Migration `f2c31a8bd420` records:
+
+- `embedding_provider`
+- `embedding_model`
+
+Retrieval requires an exact match with the active embedding identity.
+
+After changing embedding providers, existing documents must be explicitly reindexed.
+
+Run from `backend`:
 
 ```powershell
 .\venv\Scripts\python.exe -m alembic upgrade head
@@ -101,47 +348,115 @@ For selected documents:
 .\venv\Scripts\python.exe -m app.rag.reindex --document-id 12 --document-id 27 --yes
 ```
 
-The command embeds stored chunk text before acquiring row locks. It then verifies the document and every chunk are unchanged and replaces all vectors plus the provider/model identity in one transaction. API, quota, validation, or concurrency failures leave the previous vectors and identity intact. It never runs during application startup. Use `--force` only when intentionally regenerating documents already using the active identity.
+The reindex process:
 
-### Neon
+1. Generates embeddings for stored chunk text.
+2. Acquires database locks.
+3. Verifies that documents and chunks have not changed.
+4. Replaces vectors and embedding identity transactionally.
 
-1. Create a Neon project and copy its **pooled** connection string.
-2. Set Render `DATABASE_URL` to the connection string and retain `sslmode=require`. Both `postgresql://` and `postgresql+psycopg://` are accepted; the application normalizes the former to psycopg v3.
-3. Keep the small default pool (`DATABASE_POOL_SIZE=3`, `DATABASE_MAX_OVERFLOW=2`) for Neon's pooled endpoint.
-4. The container runs `python -m app.db_bootstrap` to enable `vector`, followed by `alembic upgrade head`, before Uvicorn starts. The Neon role must be allowed to create the supported `vector` extension.
+Failures leave the previous vectors and identity intact. Reindexing does not run automatically during application startup.
 
-Migration `f2c31a8bd420` adds embedding identity and its retrieval index. Check migration state with `alembic current` and `alembic heads`.
+Use `--force` only when intentionally regenerating documents already using the active embedding identity.
 
-### Render backend
+### 4. Neon PostgreSQL
 
-Create the service from `render.yaml`, or configure a Docker web service with root directory left at the repository root and `backend/Dockerfile`. Set the secret values from `backend/.env.render.example`:
+1. Create a Neon project.
+2. Copy the pooled connection string.
+3. Set Render's `DATABASE_URL`.
+4. Retain `sslmode=require`.
+5. Keep the small database pool configuration.
 
-- `DATABASE_URL`: Neon pooled URL with `sslmode=require`
-- `JWT_SECRET_KEY`: a random value of at least 32 bytes
-- `GROQ_API_KEY`: server-side only
-- `GEMINI_API_KEY`: server-side only
-- `CORS_ORIGINS`: the exact production Vercel origin, with no trailing slash
+Recommended cloud settings:
 
-Render uses `/health` and the container honors its injected `PORT`. The default cloud image uses `requirements-cloud.txt`; it has no local embedding or reranking weights. Do not put secrets in Docker build arguments. Free services spin down when idle, and in-process document background tasks can be interrupted by restarts.
+```env
+DATABASE_POOL_SIZE=3
+DATABASE_MAX_OVERFLOW=2
+DATABASE_POOL_RECYCLE_SECONDS=300
+```
 
-### Vercel frontend
+The container runs:
 
-Import the repository and set **Root Directory** to `frontend`. `frontend/vercel.json` uses `npm ci` and `npm run build`. Add `NEXT_PUBLIC_API_URL=https://your-render-service.onrender.com` for Production (and separately for Preview if used), then redeploy because public variables are compiled into the browser bundle.
+```bash
+python -m app.db_bootstrap
+alembic upgrade head
+```
 
-The browser sends the refresh cookie directly to Render. Set `COOKIE_SECURE=true` and `COOKIE_SAMESITE=none`, and keep `allow_credentials` with exact CORS origins. Some browsers or privacy modes block cross-site cookies even with these attributes. Custom domains under one registrable domain (for example `app.example.com` and `api.example.com`) avoid that third-party-cookie dependency and allow `COOKIE_SAMESITE=lax`.
+This enables pgvector and applies database migrations before the API starts.
 
-For preview deployments, either list the exact preview origins or set a tightly anchored `CORS_ORIGIN_REGEX`; never use `*` with credentialed requests.
+### 5. Render Backend
 
-## Tests
+The repository includes `render.yaml` and `backend/Dockerfile`.
 
-From `backend`:
+Render uses Docker with Python 3.11-slim.
+
+The Dockerfile installs:
+
+```dockerfile
+ARG REQUIREMENTS_FILE=requirements-cloud.txt
+```
+
+The cloud dependency file excludes local ML dependencies.
+
+Configure these environment variables in Render:
+
+- `DATABASE_URL`
+- `JWT_SECRET_KEY`
+- `GROQ_API_KEY`
+- `GEMINI_API_KEY`
+- `CORS_ORIGINS`
+- `GROQ_MODEL`
+- `EMBEDDING_PROVIDER=gemini`
+- `GEMINI_EMBEDDING_MODEL=gemini-embedding-001`
+- `RERANKER_PROVIDER=none`
+
+The container honors Render's injected `PORT` and exposes `/health`.
+
+Render Free services may spin down when inactive. In-process background tasks can also be interrupted by service restarts.
+
+### 6. Vercel Frontend
+
+1. Import the GitHub repository into Vercel.
+2. Set the Root Directory to `frontend`.
+3. Configure `NEXT_PUBLIC_API_URL` with the Render backend URL.
+4. Deploy the frontend.
+
+The browser sends refresh cookies directly to Render.
+
+For cross-site frontend/API deployments, configure:
+
+```env
+COOKIE_SECURE=true
+COOKIE_SAMESITE=none
+```
+
+CORS must allow the exact frontend origin with credentials enabled.
+
+Some browsers and privacy modes restrict third-party cookies. Custom domains under the same registrable domain, such as `app.example.com` and `api.example.com`, can avoid this dependency.
+
+For preview deployments, use explicit allowed origins or a tightly anchored CORS origin regex. Never use `*` with credentialed requests.
+
+---
+
+## Testing
+
+### Backend
+
+Run from `backend`:
 
 ```powershell
 .\venv\Scripts\python.exe -m compileall app
+```
+
+Run backend tests:
+
+```powershell
 .\venv\Scripts\python.exe -m unittest discover -p "test_*.py" -v
 ```
 
-From `frontend`:
+### Frontend
+
+Run from `frontend`:
 
 ```powershell
 npm run lint
@@ -149,17 +464,51 @@ npm run build
 npx playwright test
 ```
 
-Live external-service integration tests are opt-in through the environment variables documented in `backend/test_chat_history.py`. Unit tests mock Gemini and do not consume quota.
+Live external-service integration tests are opt-in through their documented environment variables. Unit tests mock Gemini and do not consume API quota.
 
-## RAG evaluation
+---
 
-`backend/evaluation/cases.json` is a small versioned evaluation set with answerable, unanswerable, and follow-up cases. `app/evaluation.py` provides deterministic Recall@K, expected-fact, and citation-validity helpers. Run `python -m unittest test_evaluation -v` for deterministic metrics. Live answer evaluation must use a known uploaded corpus and should report raw results; no benchmark score is bundled or claimed.
+## RAG Evaluation
 
-## Known limitations
+The project includes versioned evaluation cases in:
 
-- FastAPI background tasks are not durable. A restart loses queued file bytes; stale PROCESSING rows are marked FAILED at startup and users must upload those documents again.
-- Validated progressive delivery begins after Groq completes, so it improves presentation rather than time to first validated answer.
-- SSE requests already committed before delivery remain in chat history if the browser disconnects; clients reconcile from the stored conversation.
-- Gemini embedding free-tier capacity, geography, and rate limits may change. A real key/quota call and a full document re-index were not exercised by unit tests.
-- Disabling the local reranker reduces model memory substantially but returns RRF ordering without cross-encoder refinement.
-- Production still needs TLS termination, managed secrets, backups, centralized logs/metrics, alerting, rate limiting at the gateway, and CI/CD.
+```text
+backend/evaluation/cases.json
+```
+
+Evaluation helpers in `app/evaluation.py` include:
+
+- Recall@K
+- Expected-fact checks
+- Citation-validity checks
+
+Run deterministic evaluation tests from `backend`:
+
+```powershell
+python -m unittest test_evaluation -v
+```
+
+Live answer evaluation requires a representative uploaded document corpus.
+
+No benchmark score is claimed in this repository.
+
+---
+
+## Known Limitations
+
+- **Background processing:** FastAPI background tasks are not durable. A restart can interrupt processing, and users may need to upload affected documents again.
+- **Progressive SSE:** Delivery begins after generation and provenance validation, so it does not reduce time to first generated token.
+- **Browser disconnects:** Responses committed before SSE delivery remain in chat history and can be reconciled from stored conversations.
+- **Gemini quotas:** Availability and rate limits may change. A full document reindex and real production quota test are not covered by unit tests.
+- **Cloud reranking:** The cloud configuration disables the local cross-encoder and uses RRF ordering.
+- **Production readiness:** Backups, centralized logs and metrics, alerting, gateway rate limiting, and CI/CD remain important future improvements.
+
+---
+
+## Project Goal
+
+Nexora explores the practical engineering challenges of building and deploying a full-stack Retrieval-Augmented Generation system.
+
+The project focuses on more than simply generating answers from documents. It brings together document ingestion, embedding management, hybrid retrieval, source validation, authentication, persistent conversations, deployment optimization, and evaluation.
+
+**Nexora — Intelligence, connected.**
