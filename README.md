@@ -10,18 +10,32 @@ Upload your documents, build a personal knowledge base, and interact with your i
 
 **Backend API:** https://nexora-h21g.onrender.com
 
+## 🎥 Demo Video
+
+Watch the Nexora project demonstration:
+
+[▶ Watch Nexora Demo — v1.0.0](https://github.com/Shahbaz-19/Nexora/releases/tag/v1.0.0)
+
 ---
 
 ## Features
 
 - **Secure authentication:** Email/password authentication, short-lived JWT access tokens, rotating refresh sessions, and HttpOnly cookies.
+
 - **Document ingestion:** Per-user PDF, TXT, and Markdown uploads with asynchronous parsing, chunking, and embedding.
+
 - **Hybrid retrieval:** pgvector semantic search combined with PostgreSQL full-text search.
+
 - **Reciprocal Rank Fusion:** Combines semantic and lexical search results.
+
 - **Optional reranking:** Local cross-encoder reranking.
+
 - **Conversational RAG:** Persistent conversations, follow-up question rewriting, and bounded chat history.
+
 - **Source-grounded answers:** Backend-validated structured provenance, trusted source cards, and separated supplemental guidance.
+
 - **Knowledge Base:** Document status, metadata management, and deletion.
+
 - **Progressive delivery:** Validated SSE responses through a responsive Next.js interface.
 
 ---
@@ -79,14 +93,23 @@ flowchart TD
 ### RAG Pipeline
 
 1. **Upload:** An authenticated user uploads a supported document.
+
 2. **Processing:** The API accepts the upload with HTTP `202` and schedules background processing.
+
 3. **Chunking:** Documents are parsed and divided into smaller chunks.
+
 4. **Embedding:** Chunks are converted into vectors using the configured embedding provider.
+
 5. **Retrieval:** Semantic and lexical search retrieve relevant chunks.
+
 6. **Fusion:** Reciprocal Rank Fusion combines retrieval candidates.
+
 7. **Reranking:** An optional local cross-encoder reranks the candidates.
+
 8. **Generation:** Retrieved context is sent to Groq for structured answer generation.
+
 9. **Validation:** The backend validates provenance before persisting and returning the response.
+
 10. **Delivery:** The validated Markdown is progressively delivered through Server-Sent Events.
 
 **Streaming behavior:** Generation and provenance validation finish before SSE delivery begins. This provides progressive answer display, not time-to-first-token generation streaming.
@@ -134,7 +157,9 @@ flowchart TD
 ### Prerequisites
 
 - Python 3.13.3 (local development environment)
+
 - Node.js and npm
+
 - PostgreSQL with pgvector, or Docker Desktop
 
 ### 1. Backend Setup
@@ -186,8 +211,11 @@ npm run dev
 The application will be available at:
 
 - Frontend: http://localhost:3000
+
 - Backend: http://localhost:8000
+
 - API documentation: http://localhost:8000/docs
+
 - Health check: http://localhost:8000/health
 
 ### Embedding Configuration
@@ -195,6 +223,7 @@ The application will be available at:
 The local `.env.example` selects:
 
 - `EMBEDDING_PROVIDER=nomic_local`
+
 - `RERANKER_PROVIDER=local`
 
 To use hosted Gemini embeddings locally:
@@ -303,8 +332,11 @@ These measurements make the local model stack unsuitable for the Render Free mem
 The cloud configuration therefore uses:
 
 - Gemini `gemini-embedding-001`
+
 - 768-dimensional embeddings
+
 - RRF retrieval
+
 - `RERANKER_PROVIDER=none`
 
 The cloud application avoids loading PyTorch and local reranking weights.
@@ -314,10 +346,15 @@ The cloud application avoids loading PyTorch and local reranking weights.
 Gemini uses:
 
 - `RETRIEVAL_DOCUMENT` for document chunks.
+
 - `RETRIEVAL_QUERY` for user queries.
+
 - 768-dimensional vectors.
+
 - L2 normalization.
+
 - Vector validation for incorrect dimensions, zero values, NaN, and infinity.
+
 - Configured request timeouts and bounded retry/backoff for transient errors.
 
 Gemini free-tier availability and quotas depend on the Google project and may change.
@@ -329,6 +366,7 @@ Nomic and Gemini embeddings are incompatible even though both use 768 dimensions
 Migration `f2c31a8bd420` records:
 
 - `embedding_provider`
+
 - `embedding_model`
 
 Retrieval requires an exact match with the active embedding identity.
@@ -351,8 +389,11 @@ For selected documents:
 The reindex process:
 
 1. Generates embeddings for stored chunk text.
+
 2. Acquires database locks.
+
 3. Verifies that documents and chunks have not changed.
+
 4. Replaces vectors and embedding identity transactionally.
 
 Failures leave the previous vectors and identity intact. Reindexing does not run automatically during application startup.
@@ -362,9 +403,13 @@ Use `--force` only when intentionally regenerating documents already using the a
 ### 4. Neon PostgreSQL
 
 1. Create a Neon project.
+
 2. Copy the pooled connection string.
+
 3. Set Render's `DATABASE_URL`.
+
 4. Retain `sslmode=require`.
+
 5. Keep the small database pool configuration.
 
 Recommended cloud settings:
@@ -401,13 +446,21 @@ The cloud dependency file excludes local ML dependencies.
 Configure these environment variables in Render:
 
 - `DATABASE_URL`
+
 - `JWT_SECRET_KEY`
+
 - `GROQ_API_KEY`
+
 - `GEMINI_API_KEY`
+
 - `CORS_ORIGINS`
+
 - `GROQ_MODEL`
+
 - `EMBEDDING_PROVIDER=gemini`
+
 - `GEMINI_EMBEDDING_MODEL=gemini-embedding-001`
+
 - `RERANKER_PROVIDER=none`
 
 The container honors Render's injected `PORT` and exposes `/health`.
@@ -417,8 +470,11 @@ Render Free services may spin down when inactive. In-process background tasks ca
 ### 6. Vercel Frontend
 
 1. Import the GitHub repository into Vercel.
+
 2. Set the Root Directory to `frontend`.
+
 3. Configure `NEXT_PUBLIC_API_URL` with the Render backend URL.
+
 4. Deploy the frontend.
 
 The browser sends refresh cookies directly to Render.
@@ -479,7 +535,9 @@ backend/evaluation/cases.json
 Evaluation helpers in `app/evaluation.py` include:
 
 - Recall@K
+
 - Expected-fact checks
+
 - Citation-validity checks
 
 Run deterministic evaluation tests from `backend`:
@@ -497,10 +555,15 @@ No benchmark score is claimed in this repository.
 ## Known Limitations
 
 - **Background processing:** FastAPI background tasks are not durable. A restart can interrupt processing, and users may need to upload affected documents again.
+
 - **Progressive SSE:** Delivery begins after generation and provenance validation, so it does not reduce time to first generated token.
+
 - **Browser disconnects:** Responses committed before SSE delivery remain in chat history and can be reconciled from stored conversations.
+
 - **Gemini quotas:** Availability and rate limits may change. A full document reindex and real production quota test are not covered by unit tests.
+
 - **Cloud reranking:** The cloud configuration disables the local cross-encoder and uses RRF ordering.
+
 - **Production readiness:** Backups, centralized logs and metrics, alerting, gateway rate limiting, and CI/CD remain important future improvements.
 
 ---
